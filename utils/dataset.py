@@ -70,7 +70,7 @@ class DetectDataset(Dataset):
         super(DetectDataset, self).__init__()
         self.dataset = []
         self.draw = Draw()
-        self.smudge = enhance.Smudge()
+        self.smudge = enhance.Smudge()  # 随机污损
         root = detect_config.image_root
         for image_name in os.listdir(root):
             box = self.get_box(image_name)
@@ -93,13 +93,14 @@ class DetectDataset(Dataset):
             image = enhance.apply_plate(image, points, plate)
         [x1, y1, x2, y2, x4, y4, x3, y3] = points
         points = [x1, x2, x3, x4, y1, y2, y3, y4]
-        image, pts = enhance.augment_detect(image, points, 208)
-
+        image, pts = enhance.augment_detect(image, points, 208) #对图片进行变换并调整大小至208
         # cv2.imshow('a',image)
         # cv2.waitKey()
         image_tensor = torch.from_numpy(image)/255
         image_tensor = rearrange(image_tensor, 'h w c -> c h w')
-        label = make_label.object_label(pts,208,16)
+
+
+        label = make_label.object_label(pts,208,16)   #将目标框转为损失函数用的lable
         label = torch.from_numpy(label).float()
         return image_tensor,label
 

@@ -1,7 +1,7 @@
 import numpy
 
 
-def point_in_polygon(x, y, pts):
+def point_in_polygon(x, y, pts):  #判断一个点是否落在多边形内 射线法
     n = len(pts) // 2
     pts_x = [pts[i] for i in range(0, n)]
     pts_y = [pts[i] for i in range(n, len(pts))]
@@ -16,18 +16,18 @@ def point_in_polygon(x, y, pts):
 
 
 def object_label(points, dims, stride):
-    scale = ((dims + 40.0) / 2.0) / stride
-    size = dims // stride
+    scale = ((dims + 40.0) / 2.0) / stride   #scale = 7.75
+    size = dims // stride   #网格图像的尺寸   # size = 13
     label = numpy.zeros((size, size, 9))
     for i in range(size):
         y = (i + 0.5) / size
         for j in range(size):
             x = (j + 0.5) / size
             if point_in_polygon(x, y, points):
-                label[i, j, 0] = 1
+                label[i, j, 0] = 1         # 每个网格有9个数，第一个 代表该网格是否包含目标  后8个数为
                 pts = numpy.array(points).reshape((2, -1))
-                pts = pts * dims / stride
-                pts = pts - numpy.array([[j + 0.5], [i + 0.5]])
-                pts = pts / scale
-                label[i, j, 1:] = pts.reshape((-1,))
+                pts = pts * dims / stride  #相对整个13*13的网格坐标
+                pts = pts - numpy.array([[j + 0.5], [i + 0.5]])  #相对对应网格[i,j]中心点网格的坐标
+                pts = pts / scale     #放缩
+                label[i, j, 1:] = pts.reshape((-1,))    #真实车牌坐标信息
     return label

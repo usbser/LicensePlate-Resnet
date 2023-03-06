@@ -11,7 +11,7 @@ class Smudge:
     """
     随机污损
     """
-    def __init__(self, smu='utils/smu.png'):
+    def __init__(self, smu='./utils/smu1.png'):
         self._smu = cv2.imread(smu)
 
     def __call__(self, image):
@@ -40,7 +40,7 @@ def gauss_noise(image):
 
 def transform_matrix(pts, t_pts):
     return cv2.getPerspectiveTransform(numpy.float32(pts[:2, :].T), numpy.float32(t_pts[:2, :].T))
-
+    #透视变换(Perspective Transformation)是将成像投影到一个新的视平面
 
 def points_matrix(pts):
     return numpy.matrix(numpy.concatenate((pts, numpy.ones((1, pts.shape[1]))), 0))
@@ -97,6 +97,8 @@ def rotate_matrix(width, height, angles=numpy.zeros(3), zcop=1000.0, dpp=1000.0)
 
 def project(img, pts, trans, dims):
     t_img = cv2.warpPerspective(img, trans, (dims, dims))
+    #cv2.imshow('a',t_img)
+    #cv2.waitKey()
     t_pts = numpy.matmul(trans, points_matrix(pts))
     t_pts = t_pts / t_pts[2]
     return t_img, t_pts[:2]
@@ -173,7 +175,7 @@ def reconstruct_plates(image, plate_pts, out_size=(144, 48)):
         plates.append(plate)
     return plates
 
-def random_cut(image,size):
+def random_cut(image,size): # 粘贴车牌图片于数据图中
     h,w,c = image.shape
     min_side = min(h,w)
     h_sid_len = random.randint(int(0.2*min_side), int(0.9*min_side))
@@ -202,17 +204,17 @@ def apply_plate(image, points, plate):
 
 
 def augment_detect(image, points, dims, flip_prob=0.5):
-    points = numpy.array(points).reshape((2, 4))
-    wh_ratio = random.uniform(2.0, 4.0)
-    width = random.uniform(dims * 0.2, dims * 1.0)
-    height = width / wh_ratio
-    dx = random.uniform(0.0, dims - width)
-    dy = random.uniform(0.0, dims - height)
+    points = numpy.array(points).reshape((2, 4)) #（2，4） 4个x和4个y   左上开始顺时针
+    wh_ratio = random.uniform(2.0, 4.0)   #随机取个2-4之间的数  作为高宽比
+    width = random.uniform(dims * 0.2, dims * 1.0) #宽度为  41.6 - 208的随机数
+    height = width / wh_ratio  #用随机高宽比算出对应的高度
+    dx = random.uniform(0.0, dims - width)   #dx 为 0到（208-宽度）的随机数
+    dy = random.uniform(0.0, dims - height)  #dy 为 0到（208-高度）的随机数
     crop = transform_matrix(
         points_matrix(points),
-        rect_matrix(dx, dy, dx + width, dy + height)
+        rect_matrix(dx, dy, dx + width, dy + height)  #208范围内的 随机点+随机高宽
     )
-    # random rotate
+    # random rotate 随机旋转
     max_angles = numpy.array([80.0, 80.0, 45.0])
     angles = numpy.random.rand(3) * max_angles
     if angles.sum() > 120:
@@ -220,14 +222,15 @@ def augment_detect(image, points, dims, flip_prob=0.5):
     # print(angles)
     rotate = rotate_matrix(dims, dims, angles)
     # apply projection
-    image, points = project(image, points, numpy.matmul(rotate, crop), dims)
+
+    image, points = project(image, points, numpy.matmul(rotate, crop), dims) #对图片和目标框进行映射与旋转变换
     # scale the coordinates of points to [0, 1]
     points = points / dims
     # random flip
     if random.random() < flip_prob:
         image = cv2.flip(image, 1)
         points[0] = 1 - points[0]
-        points = points[..., [1, 0, 3, 2]]
+        points = points[..., [1, 0, 3, 2]]  #图片翻转后 对目标框调整 从左上角顺时针 ，改为左上角逆时针
         # print(11111)
     # color augment
     image = hsv_noise(image)

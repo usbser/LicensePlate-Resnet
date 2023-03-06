@@ -23,7 +23,7 @@ class DExplorer:
         h, w, c = image.shape
         f = min(288 * max(h, w) / min(h, w), 608) / min(h, w)
         _w = int(w * f) + (0 if w % 16 == 0 else 16 - w % 16)
-        _h = int(h * f) + (0 if h % 16 == 0 else 16 - h % 16)
+        _h = int(h * f) + (0 if h % 16 == 0 else 16 - h % 16) #控制长宽为16的整数倍
         image = cv2.resize(image, (_w, _h), interpolation=cv2.INTER_AREA)
         image_tensor = torch.from_numpy(image) / 255
         image_tensor = rearrange(image_tensor, 'h w c ->() c h w')
