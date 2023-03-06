@@ -3,7 +3,10 @@
 ## 要求
 
 Python 3.8 或更晚与所有[要求.txt](https://github.com/ultralytics/yolov5/blob/master/requirements.txt)依赖项安装，包括.要安装运行：`torch>=1.7`
+ 
+[CSDN文章](https://blog.csdn.net/weixin_48866452/article/details/120319588)
 
+[GitHub链接](https://github.com/HibikiJie/LicensePlate)
 ```
 $ pip install -r requirements.txt
 ```
