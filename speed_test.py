@@ -1,11 +1,14 @@
+import time
+
 import detect_config as config
 import cv2
 import torch
 from einops import rearrange
-import matplotlib.pyplot as plt
+
 import os
 import numpy
-
+from torch.utils.data import DataLoader
+from utils.dataset import DetectDataset
 
 class DExplorer:
 
@@ -24,6 +27,8 @@ class DExplorer:
             print('成功加载网络参数')
         else:
             raise RuntimeError('Model parameters are not loaded')
+        self.dataset = DetectDataset()
+        self.data_loader = DataLoader(self.dataset, config.batch_size, drop_last=True)
         # self.net.to(config.device)
         self.net.eval()
 
@@ -40,22 +45,11 @@ class DExplorer:
         with torch.no_grad():
             y = self.net(image_tensor).cpu()
             points = self.select_box(y, (_w, _h))
-            # for point, c in points:
-            #     x1, x2, x3, x4, y1, y2, y3, y4 = point.reshape(-1)
-            #     x1, x2, x3, x4 = x1 * _w, x2 * _w, x3 * _w, x4 * _w
-            #     y1, y2, y3, y4 = y1 * _h, y2 * _h, y3 * _h, y4 * _h
-            #     i = 1
-            #     for x, y in [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]:
-            #         image = cv2.circle(image, (int(x), int(y)), 2, (0, 0, 255), -1)
-            #         image = cv2.putText(image, str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-            #         i += 1
-            # cv2.imshow('a', image)
-            #
-            # # print(points)
-            # cv2.waitKey()
+
             return points
 
     def select_box(self, predict, size, dims=208, stride=16):
+
         wh = numpy.array([[size[0]], [size[1]]])
         probs = predict[0, :, :, 0:2]
         # # a = probs[:,:,1]>0.9
@@ -140,12 +134,28 @@ class DExplorer:
         i = w * h
         return i / (s1 + s2 - i)
 
+    def test(self):
+        s = time.time()
+        self.net.to(config.device)
+        for i, (images, labels) in enumerate(self.data_loader):
+            images = images.to(config.device)
+            if i > 10:
+                break
+            predict = self.net(images)
+            print(i,time.time() - s)
+        return time.time() - s
 
 if __name__ == '__main__':
     # import numpy
 
     e = DExplorer()
-    image = cv2.imread('test_image.jpg')
+    #s = time.time()
+    # for i in range(100):
+    #     print(i)
+    #     image = cv2.imread('test_image.jpg')
+    #     labe = e(image)
+    #print(labe, time.time() - s)
+    print(e.test())
+
     # image = numpy.zeros((208, 208, 3), dtype=numpy.uint8)
-    labe = e(image)
-    print(labe)
+

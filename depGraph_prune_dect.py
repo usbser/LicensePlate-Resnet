@@ -2,7 +2,7 @@ import os
 #os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,4"
 import argparse
 import time
-
+import torch_pruning as tp
 from torch.utils.data import DataLoader
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
@@ -37,8 +37,9 @@ class Trainer:
             ckpt['model'] = {k: v for k, v in ckpt['model'].float().state_dict().items()
                              if self.net.state_dict()[k].shape == v.shape}
             self.net.load_state_dict(ckpt['model'])
-            self.optimizer.load_state_dict(ckpt['optimizer'])
+            #self.optimizer.load_state_dict(ckpt['optimizer'])
             self.epoch = ckpt['epoch']
+            self.endepoch = self.epoch
             print('成功加载网络参数')
         else:
             print('未加载网络参数')
@@ -59,7 +60,7 @@ class Trainer:
 
     def train(self):
         s = time.time()
-        for epoch in range(self.epoch, config.epoch):
+        for epoch in range(self.epoch, self.endepoch):
             self.net.train()
             loss_sum = 0
             for i, (images, labels) in enumerate(self.data_loader):
@@ -139,5 +140,53 @@ class Trainer:
 if __name__ == '__main__':
     trainer = Trainer()
     tb_writer = SummaryWriter(comment='train_results')
+
+    #depgraph_prune
+
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    trainer.net.to(device)
+    model = trainer.net
+    DG = tp.DependencyGraph()
+
+
+    imp = tp.importance.MagnitudeImportance(p=2)
+    ignored_layers = []
+    for m in model.modules():
+        if isinstance(m, torch.nn.Conv2d) and m.out_channels == 8:
+            ignored_layers.append(m)  # DO NOT prune the final classifier!
+
+    example_inputs = torch.randn(1, 3, 720, 720).to(device)
+    pruner = tp.pruner.MagnitudePruner(
+        model,
+        example_inputs,
+        global_pruning=False,  # If False, a uniform sparsity will be assigned to different layers.
+        importance=imp,  # importance criterion for parameter selection
+        iterative_steps=5,  # the number of iterations to achieve target sparsity
+        ch_sparsity=0.1,  # remove 50% channels, ResNet18 = {64, 128, 256, 512} => ResNet18_Half = {32, 64, 128, 256}
+        ignored_layers=ignored_layers,
+    )
+    base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
+
+    for i in range(5):
+        # 3. the pruner.step will remove some channels from the model with least importance
+        pruner.step()
+        macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
+        print(
+            "  Iter %d/%d, Params: %.2f M => %.2f M"
+            % (i + 1, 5, base_nparams / 1e6, nparams / 1e6)
+        )
+        print(
+            "  Iter %d/%d, MACs: %.2f G => %.2f G"
+            % (i + 1, 5, base_macs / 1e9, macs / 1e9)
+        )
+        # 4. Do whatever you like here, such as fintuning
+        trainer.endepoch += 10
+        trainer.train()
+        trainer.epoch += 10
+        # print(model)
+        #print(model(example_inputs).shape)
+
+
     trainer.train()
     tb_writer.close()

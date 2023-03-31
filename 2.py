@@ -16,7 +16,7 @@
 # along with alpr_utils.  If not, see <https://www.gnu.org/licenses/>.
 
 import time
-import mxnet as mx
+# import mxnet as mx
 import matplotlib.pyplot as plt
 from gluoncv import model_zoo, data
 import cv2
@@ -26,10 +26,10 @@ import numpy
 from utils.drawchinese import DrawChinese
 
 
-def load_image(path):
-    with open(path, "rb") as f:
-        buf = f.read()
-    return mx.image.imdecode(buf)
+# def load_image(path):
+#     with open(path, "rb") as f:
+#         buf = f.read()
+#     return mx.image.imdecode(buf)
 
 
 def fixed_crop(raw, bbox):
@@ -41,15 +41,16 @@ def fixed_crop(raw, bbox):
     x1 = min(int(x1), raw.shape[1])
     y1 = max(int(bbox[3].asscalar()), 0)
     y1 = min(int(y1), raw.shape[0])
-    return mx.image.fixed_crop(raw, x0, y0, x1 - x0, y1 - y0)
+    return raw[x0:x1,y0:y1]
+    #return mx.image.fixed_crop(raw, x0, y0, x1 - x0, y1 - y0)
 
 
 def test(images):
-    context = mx.cpu(0)
+    #context = mx.cpu(0)
     yes = 0
     count = 0
     yesss = 0
-    yolo = model_zoo.get_model('yolo3_darknet53_voc', pretrained=True, ctx=context)
+    yolo = model_zoo.get_model('yolo3_darknet53_voc', pretrained=True)#, ctx=context
     read_plate = ReadPlate()
     for path in images:
 
@@ -57,7 +58,8 @@ def test(images):
         # print(label)
         # exit()
         '''加载图片'''
-        raw = load_image(path)
+        # raw = load_image(path)
+        raw = cv2.imread(path)
         # print(raw.shape)
         ts = time.time()
         # print('aaaaaaaaaaaaa')
@@ -65,7 +67,7 @@ def test(images):
         x, _ = data.transforms.presets.yolo.transform_test(raw, short=512)
         # print(x)
         '''得到侦测结果'''
-        classes, scores, bboxes = yolo(x.as_in_context(context))
+        classes, scores, bboxes = yolo(x)
         # print(classes.shape)
         '''反算回归框'''
         bboxes[0, :, 0::2] = bboxes[0, :, 0::2] / x.shape[3] * raw.shape[1]
@@ -108,7 +110,11 @@ if __name__ == "__main__":
     import os
 
     images = []
-    for file_name in os.listdir('/home/cq/public/hibiki/CCPD2019/test'):
+    # for file_name in os.listdir('/home/cq/public/hibiki/CCPD2019/test'):
+    #     # for image_name in os.listdir(f'/home/cq/public/hibiki/CCPD2019/ccpd_db/{file_name}'):
+    #     images.append(f'/home/cq/public/hibiki/CCPD2019/test/{file_name}')
+
+    for file_name in os.listdir('D:\\dataSet\\CCPD2019\\5000_images\\test'):
         # for image_name in os.listdir(f'/home/cq/public/hibiki/CCPD2019/ccpd_db/{file_name}'):
-        images.append(f'/home/cq/public/hibiki/CCPD2019/test/{file_name}')
+        images.append(f'D:\\dataSet\\CCPD2019\\5000_images\\test\\{file_name}')
     test(images)

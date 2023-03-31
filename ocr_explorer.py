@@ -25,6 +25,14 @@ class Explorer:
             out = self.net(image).reshape(-1, 70)
             out = torch.argmax(out, dim=1).cpu().numpy().tolist()
             c = ''
+            # for i in out:
+            #     if i!=0:
+            #         if i <= 35:
+            #             c += str(i-1)
+            #         else:
+            #             c += str(i-36)
+            #         c += '_'
+            # return c[:-1]
             for i in out:
                 c += config.class_name[i]
             return self.deduplication(c)

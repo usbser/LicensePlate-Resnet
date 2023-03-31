@@ -1,7 +1,10 @@
+import os
+
 from torch import nn
 from torchvision.models import resnet18
 import torch
 from einops import rearrange
+import ocr_config as config
 
 
 class SelfAttention(nn.Module):
@@ -136,7 +139,7 @@ class OcrNet(nn.Module):
         self.decoder = nn.Sequential(
             Block(512, 8, False),
             Block(512, 8, False),
-            Block(512, 8, False),
+            #Block(512, 8, False),
         )
         self.out_layer = nn.Linear(512, num_class)
         self.abs_pos_emb = AbsPosEmb((3, 9), 512)
@@ -153,6 +156,9 @@ class OcrNet(nn.Module):
 if __name__ == '__main__':
     m = OcrNet(70)
     print(m)
+    if os.path.exists('../weights/ocr_net2.pth'):
+        m.load_state_dict(torch.load('../weights/ocr_net2.pth', map_location='cpu'))
+        print('加载参数成功')
     x = torch.randn(32,3,48,144)
     print(m(x).shape)
 
